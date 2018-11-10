@@ -1,0 +1,104 @@
+URL
+	/
+	/browse/
+	/search/<query>
+	/categories/
+	/categories/<category>
+
+	/register
+	/login
+	/passwordreset
+
+	/<user>/
+	/<user>/favourites/
+	/<user>/gallery/
+	/<user>/<picture>
+	/<user>/<picture>/edit
+	/<user>/upload
+	/<user>/settings
+
+	/error/<status>
+
+Data
+	Files
+		/users.json
+			username
+			password
+		/<user>/
+		/<user>/info.json
+			profilepicture
+			email
+			date
+			bio
+			favourites
+		/<user>/<username>.(png|jpg)
+		/<user>/<picture>.(png|jpg)
+		/<user>/<picture>.json
+			file
+			date
+			description
+			rating
+			favourite
+			tags
+			comments
+				date
+				user
+				message
+	Database
+		users
+			username PK
+			password
+			email
+			date
+			bio
+		gallery
+			title PK
+			username PK FK
+			date
+			description
+		tags
+			tag PK
+			title PK FK
+		favourites
+			title PK
+			username PK
+		comments
+			username PK
+			date PK
+			title FK
+			message
+Files
+	src
+		data
+		etc
+		static
+			css
+				base.css
+			fonts
+			ico
+			img
+			js
+		templates
+			base.html
+			home.html
+			browse.html
+			search.html
+			categories.html
+			register.html
+			login.html
+			reset.html
+			user.html
+			gallery.html
+			picture.html
+			edit.html
+			upload.html
+			settings.html
+			error.html
+		var
+		main.py
+Variables
+	base
+		pagetitle
+		user
+	search
+		urlquery
