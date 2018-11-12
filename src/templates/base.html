@@ -43,7 +43,7 @@
 				-->
 					<form class="navbar-form navbar-left form-inline my-2 my-lg-0" action="/search/" method="post" name="form">
 						<div class="form-group">
-							<input type="text" class="form-control" name="search" id="search" placeholder="Search">
+							<input type="text" class="btn-dark form-search form-control" name="search" id="search" placeholder="Search">
 						</div>
 						<button type="submit" name="submit" id="submit" class="btn btn-default">Submit</button>
 					</form>
@@ -62,58 +62,60 @@
 						</div>
 					</li>
 					{% else %}
-					<a class="nav-link" href="#" onclick="document.getElementById('login').style.display='block'">Log in</a>
-					<a class="nav-link" href="#" onclick="document.getElementById('register').style.display='block'"">Register</a>
+					<a class="nav-link" href="#" onclick="document.getElementById('login_modal').style.display='block'">Log in</a>
+					<a class="nav-link" href="#" onclick="document.getElementById('register_modal').style.display='block'">Register</a>
 					{% endif %}
 				</ul>
 			</div>
 		</nav>
 		<!-- Content -->
-		<main role="
-					 main" class="container">{% block content %}{% endblock %}</main>
-						<!-- Login -->
-						{% if user is not defined %}
-						<div id="login" class="modal">
-							<form class="modal-content animate navbar-dark" action="/login">
-								<div>
-									<span onclick="document.getElementById('login').style.display='none'" class="close" title="Close Modal">&times;</span>
-								</div>
-								<div class="container">
-									<label>Log in</label>
-									<input class="form-control" type="text" name="username" placeholder="Username" required>
-									<input class="form-control" type="password" name="password" placeholder="Password" required>
-									<button class="btn btn-success" type="submit">Login</button>
-									<label>
-										<input type="checkbox" name="remember"> Remember me
-									</label>
-								</div>
-								<div class="container" style="background-color:#f1f1f1">
-									<button type="button" onclick="document.getElementById('login').style.display='none'" class="btn btn-danger">Cancel</button>
-									<span class="password">Forgot <a href="{{ url_for('reset') }}">password?</a></span>
-								</div>
-							</form>
-						</div>
-						<script src="{{ url_for('static', filename='js/login.js') }}"></script>
-						<div id="register" class="modal">
-							<form class="modal-content animate navbar-dark" action="/login">
-								<div>
-									<span onclick="document.getElementById('login').style.display='none'" class="close" title="Close Modal">&times;</span>
-								</div>
-								<div class="container">
-									<label>Register</label>
-									<input class="form-control" type="text" name="username" placeholder="Username" required>
-									<input class="form-control" type="text" name="email" placeholder="E-mail" required>
-									<input class="form-control" type="password" name="password" placeholder="Password" required>
-									<input class="form-control" type="password" name="password2" placeholder="Confirm password" required>
-									<button class="btn btn-success" type="submit">Register</button>
-								</div>
-								<div class="container" style="background-color:#f1f1f1">
-									<button type="button" onclick="document.getElementById('register').style.display='none'" class="btn btn-danger">Cancel</button>
-								</div>
-							</form>
-						</div>
-						<script src="{{ url_for('static', filename='js/register.js') }}"></script>
-						{% endif %}
+		<main role="main" class="container">
+			{% block content %}
+			{% endblock %}
+		</main>
+		{% if user is not defined %}
+		<!-- Login -->
+		<div id="login_modal" class="modal">
+			<form class="modal-content animate navbar-dark" action="/login">
+				<div>
+					<span onclick="document.getElementById('login_modal').style.display='none'" class="close" title="Close Modal">&times;</span>
+				</div>
+				<div class="container">
+					<label>Log in</label>
+					<input class="form-control" type="text" name="login_username" placeholder="Username" required>
+					<input class="form-control" type="password" name="login_password" placeholder="Password" required>
+					<button class="btn btn-success" type="submit">Log in</button>
+					<label><input type="checkbox" name="login_remember"> Remember me</label>
+				</div>
+				<div class="container" style="background-color:#f1f1f1">
+					<button type="button" onclick="document.getElementById('login_modal').style.display='none'" class="btn btn-danger">Cancel</button>
+					<span class="password">Forgot <a href="{{ url_for('reset') }}">password?</a></span>
+				</div>
+			</form>
+		</div>
+		<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+		<!-- Register -->
+		<div id="register_modal" class="modal">
+			<form class="modal-content animate navbar-dark" action="/login">
+				<div>
+					<span onclick="document.getElementById('register_modal').style.display='none'" class="close" title="Close Modal">&times;</span>
+				</div>
+				<div class="container">
+					<label>Register</label>
+					<input class="form-control" type="text" id="register_username" name="username" placeholder="Username" required>
+					<input class="form-control" type="text" id="register_email" name="email" placeholder="E-mail" required>
+					<input class="form-control" type="password" id="register_password" name="password" placeholder="Password" required>
+					<input class="form-control" type="password" id="register_password2" name="password2" placeholder="Confirm password"
+					 required>
+					<button id="register_submit" class="btn btn-success" type="submit" disabled>Register</button>
+				</div>
+				<div class="container" style="background-color:#f1f1f1">
+					<button type="button" onclick="document.getElementById('register_modal').style.display='none'" class="btn btn-danger">Cancel</button>
+				</div>
+			</form>
+		</div>
+		<script src="{{ url_for('static', filename='js/register.js') }}"></script>
+		{% endif %}
 	</body>
 
 </html>

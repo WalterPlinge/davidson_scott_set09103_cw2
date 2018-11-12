@@ -1,27 +1,85 @@
 import ConfigParser
 import logging
+import hashlib
 import os
 import random
 import sqlite3
+import uuid
 
 from flask import abort, flash, Flask, g, json, make_response, redirect, render_template, request, session, url_for
 from logging.handlers import RotatingFileHandler
 
 
+# Flask app and secret key
 app = Flask(__name__)
 app.secret_key = os.urandom(64)
+app_name = "PixlHaven"
 
-global_pagetitle = "PixlHaven"
+
+# Database
+db_connection = sqlite3.connect("data/data.db")
 
 
+def db_create():
+    db_cursor = db_connection.cursor()
+    table_create_users = """
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT NOT NULL,
+            password TEXT NOT NULL, 
+            email TEXT,
+            date DATETIME NOT NULL,
+            bio TEXT,
+            PRIMARY KEY (username)
+        ); """
+    table_create_gallery = """
+        CREATE TABLE IF NOT EXISTS gallery (
+            username TEXT NOT NULL,
+            date DATETIME NOT NULL,
+			title TEXT NOT NULL,
+			description TEXT,
+            PRIMARY KEY (username, date),
+            FOREIGN KEY (username) REFERENCES users (username)
+        ); """
+    table_create_favourites = """
+        CREATE TABLE IF NOT EXISTS favourites (
+			username TEXT NOT NULL,
+			target TEXT NOT NULL,
+			date DATETIME NOT NULL,
+            PRIMARY KEY (username, target, date),
+            FOREIGN KEY (username) REFERENCES users (username),
+            FOREIGN KEY (target) REFERENCES users (username),
+            FOREIGN KEY (target) REFERENCES gallery (username),
+            FOREIGN KEY (date) REFERENCES gallery (date)
+        ); """
+    table_create_comments = """
+        CREATE TABLE IF NOT EXISTS comments (
+			username TEXT NOT NULL,
+			date DATETIME NOT NULL,
+			title TEXT NOT NULL,
+			message TEXT NOT NULL,
+            PRIMARY KEY (username, date),
+            FOREIGN KEY (username) REFERENCES users (username),
+            FOREIGN KEY (username) REFERENCES gallery (username),
+            FOREIGN KEY (date) REFERENCES gallery (date)
+        ); """
+
+    db_cursor.execute(table_create_users)
+    db_cursor.execute(table_create_gallery)
+    db_cursor.execute(table_create_favourites)
+    db_cursor.execute(table_create_comments)
+
+    db_connection.commit()
+
+
+# App routing
 @app.route('/')
 def home():
-    return render_template('home.html', pagetitle=global_pagetitle)
+    return render_template('home.html', pagetitle=app_name)
 
 
 @app.route('/browse/')
 def browse():
-    return render_template('browse.html', pagetitle=global_pagetitle)
+    return render_template('browse.html', pagetitle=app_name)
 
 
 @app.route('/search/', methods=['POST'])
@@ -42,7 +100,7 @@ def searchterm(urlquery=None):
 @app.route('/categories/<urlcategory>')
 def categories(urlcategory=None):
     if urlcategory == None:
-        return render_template('categories.html', pagetitle=global_pagetitle)
+        return render_template('categories.html', pagetitle=app_name)
     else:
         return render_template('browse.html', pagetitle=urlcategory)
 
@@ -108,12 +166,13 @@ def error(status=404):
     if status == 404:
         message = 'Sorry, the page you requested is not available.'
     if status == 405:
-        message = 'Sorry, the page does not support such a request.'
+        message = 'Sorry, you cannot access this page this way.'
     if status == 418:
         message = 'Sorry, this page has not been added yet.'
     return render_template('error.html', message=message)
 
 
+# Error handling
 @app.errorhandler(404)
 def error404(error):
     return redirect(url_for('.error', status=404))
@@ -129,6 +188,7 @@ def error418(error):
     return redirect(url_for('.error', status=418))
 
 
+# Initialisation
 def init(app):
     config = ConfigParser.ConfigParser()
     try:
@@ -147,6 +207,7 @@ def init(app):
         print 'Could not read configs from ', config_location
 
 
+# Logging
 def logs(app):
     log_pathname = app.config['log_location'] + app.config['log_file']
     file_handler = RotatingFileHandler(
@@ -162,10 +223,14 @@ def logs(app):
     app.logger.handlers.append(file_handler)
 
 
-if __name__ == 'main':
+# Run app
+if __name__ == '__main__':
     init(app)
     logs(app)
+    db_create()
     app.run(
         host=app.config['ip_address'],
-        port=int(app.config['port'])
+        port=int(app.config['port']),
+        ssl_context=('cert.pem', 'key.pem')
     )
+    db_connection.close()

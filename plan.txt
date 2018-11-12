@@ -52,16 +52,14 @@ Data
 			date
 			bio
 		gallery
-			title PK
 			username PK FK
-			date
+			date PK
+			title
 			description
-		tags
-			tag PK
-			title PK FK
 		favourites
-			title PK
-			username PK
+			username PK FK
+			target PK FK
+			date PK FK
 		comments
 			username PK
 			date PK
