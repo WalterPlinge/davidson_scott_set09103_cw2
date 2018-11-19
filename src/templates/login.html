@@ -2,6 +2,17 @@
 
 {% block content %}
 
-<p>Login</p>
+<div class="centre">
+  <form action="" class="form-centre" method="POST">
+    <label>Log in</label>
+    <input class="form-control-plaintext form-text" name="username" placeholder="Username" type="text" value="{{ request.form.username }}" required>
+    <input class="form-control-plaintext form-text" name="password" placeholder="Password" type="password" value="{{ request.form.password }}" required>
+    <button class="btn btn-sm btn-success form-control" type="submit">Log in</button>
+    <span class="form-text">Forgot <a href="{{ url_for('reset') }}">password?</a></span>
+  </form>
+  {% if error %}
+  <p class="error"><strong>Error: </strong>{{ error }}</p>
+  {% endif %}
+</div>
 
 {% endblock %}

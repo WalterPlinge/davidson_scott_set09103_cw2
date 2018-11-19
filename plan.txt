@@ -7,15 +7,16 @@ URL
 
 	/register
 	/login
-	/passwordreset
+	/logout
+	/reset
 
 	/<user>/
 	/<user>/favourites/
 	/<user>/gallery/
 	/<user>/<picture>
 	/<user>/<picture>/edit
-	/<user>/upload
-	/<user>/settings
+	/upload
+	/settings
 
 	/error/<status>
 
@@ -49,21 +50,27 @@ Data
 			username PK
 			password
 			email
-			date
-			bio
+			description
+			date_joined
+		friends
+			username PK FK
+			friend PK FK
+			date_added
 		gallery
 			username PK FK
-			date PK
+			date_uploaded PK
 			title
 			description
 		favourites
 			username PK FK
-			target PK FK
-			date PK FK
+			user PK FK
+			date_uploaded PK FK
+			date_added
 		comments
-			username PK
-			date PK
-			title FK
+			username PK FK
+			user PK FK
+			date_uploaded PK FK
+			date_added PK
 			message
 Files
 	src

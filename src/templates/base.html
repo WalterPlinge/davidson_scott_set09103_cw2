@@ -6,14 +6,10 @@
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<!-- Bootstrap -->
-		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-		 crossorigin="anonymous">
-		<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
-		 crossorigin="anonymous"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
-		 crossorigin="anonymous"></script>
-		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
-		 crossorigin="anonymous"></script>
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
 		<!-- Local -->
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 		<title>{{ pagetitle }}</title>
@@ -23,15 +19,13 @@
 		<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
 			<!-- Controls -->
 			<a class="navbar-brand" href="{{ url_for('home') }}">PixlHaven</a>
-			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-			 aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
 				<span class="navbar-toggler-icon"></span>
 			</button>
 			<!-- Navigation -->
 			<div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav mr-auto">
 					<a class="nav-link" href="{{ url_for('browse') }}">Browse</a>
-					<a class="nav-link" href="{{ url_for('categories') }}">Categories</a>
 					<!-- Search -->
 					<!---
 					<form class="navbar-form form-inline my-2 my-lg-0" action="/search/" method="post" name="form">
@@ -40,7 +34,7 @@
 						</div>
 						<button class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit" id="submit">Search</button>
 					</form>
-				-->
+					-->
 					<form class="navbar-form navbar-left form-inline my-2 my-lg-0" action="/search/" method="post" name="form">
 						<div class="form-group">
 							<input type="text" class="btn-dark form-search form-control" name="search" id="search" placeholder="Search">
@@ -50,20 +44,14 @@
 				</ul>
 				<!-- Login/Register or User -->
 				<ul class="navbar-nav">
-					{% if user is defined %}
-					<li class="nav-item">
-						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
-						 aria-haspopup="true" aria-expanded="false">{{ user }}</a>
-						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
-							<a class="dropdown-item" href="{{ url_for('gallery', urluser=user) }}">Gallery</a>
-							<a class="dropdown-item" href="{{ url_for('settings', urluser=user) }}">Settings</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="{{ url_for('logout') }}">Log out</a>
-						</div>
-					</li>
+					{% if user %}
+					<a class="nav-link" href="{{ url_for('user', urluser=user) }}">{{ user }}</a>
+					<a class="nav-link" href="{{ url_for('gallery', urluser=user) }}">Gallery</a>
+					<a class="nav-link" href="{{ url_for('settings') }}">Settings</a>
+					<a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
 					{% else %}
-					<a class="nav-link" href="#" onclick="document.getElementById('login_modal').style.display='block'">Log in</a>
-					<a class="nav-link" href="#" onclick="document.getElementById('register_modal').style.display='block'">Register</a>
+					<a class="nav-link" href="{{ url_for('login') }}">Log in</a>
+					<a class="nav-link" href="{{ url_for('register') }}">Register</a>
 					{% endif %}
 				</ul>
 			</div>
@@ -73,49 +61,6 @@
 			{% block content %}
 			{% endblock %}
 		</main>
-		{% if user is not defined %}
-		<!-- Login -->
-		<div id="login_modal" class="modal">
-			<form class="modal-content animate navbar-dark" action="/login">
-				<div>
-					<span onclick="document.getElementById('login_modal').style.display='none'" class="close" title="Close Modal">&times;</span>
-				</div>
-				<div class="container">
-					<label>Log in</label>
-					<input class="form-control" type="text" name="login_username" placeholder="Username" required>
-					<input class="form-control" type="password" name="login_password" placeholder="Password" required>
-					<button class="btn btn-success" type="submit">Log in</button>
-					<label><input type="checkbox" name="login_remember"> Remember me</label>
-				</div>
-				<div class="container" style="background-color:#f1f1f1">
-					<button type="button" onclick="document.getElementById('login_modal').style.display='none'" class="btn btn-danger">Cancel</button>
-					<span class="password">Forgot <a href="{{ url_for('reset') }}">password?</a></span>
-				</div>
-			</form>
-		</div>
-		<script src="{{ url_for('static', filename='js/login.js') }}"></script>
-		<!-- Register -->
-		<div id="register_modal" class="modal">
-			<form class="modal-content animate navbar-dark" action="/login">
-				<div>
-					<span onclick="document.getElementById('register_modal').style.display='none'" class="close" title="Close Modal">&times;</span>
-				</div>
-				<div class="container">
-					<label>Register</label>
-					<input class="form-control" type="text" id="register_username" name="username" placeholder="Username" required>
-					<input class="form-control" type="text" id="register_email" name="email" placeholder="E-mail" required>
-					<input class="form-control" type="password" id="register_password" name="password" placeholder="Password" required>
-					<input class="form-control" type="password" id="register_password2" name="password2" placeholder="Confirm password"
-					 required>
-					<button id="register_submit" class="btn btn-success" type="submit" disabled>Register</button>
-				</div>
-				<div class="container" style="background-color:#f1f1f1">
-					<button type="button" onclick="document.getElementById('register_modal').style.display='none'" class="btn btn-danger">Cancel</button>
-				</div>
-			</form>
-		</div>
-		<script src="{{ url_for('static', filename='js/register.js') }}"></script>
-		{% endif %}
 	</body>
 
 </html>

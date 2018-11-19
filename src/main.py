@@ -3,9 +3,10 @@ import logging
 import hashlib
 import os
 import random
-import sqlite3
+import time
 import uuid
 
+from database import db_create, db_match_password, db_register, db_user_exists
 from flask import abort, flash, Flask, g, json, make_response, redirect, render_template, request, session, url_for
 from logging.handlers import RotatingFileHandler
 
@@ -16,70 +17,25 @@ app.secret_key = os.urandom(64)
 app_name = "PixlHaven"
 
 
-# Database
-db_connection = sqlite3.connect("data/data.db")
-
-
-def db_create():
-    db_cursor = db_connection.cursor()
-    table_create_users = """
-        CREATE TABLE IF NOT EXISTS users (
-            username TEXT NOT NULL,
-            password TEXT NOT NULL, 
-            email TEXT,
-            date DATETIME NOT NULL,
-            bio TEXT,
-            PRIMARY KEY (username)
-        ); """
-    table_create_gallery = """
-        CREATE TABLE IF NOT EXISTS gallery (
-            username TEXT NOT NULL,
-            date DATETIME NOT NULL,
-			title TEXT NOT NULL,
-			description TEXT,
-            PRIMARY KEY (username, date),
-            FOREIGN KEY (username) REFERENCES users (username)
-        ); """
-    table_create_favourites = """
-        CREATE TABLE IF NOT EXISTS favourites (
-			username TEXT NOT NULL,
-			target TEXT NOT NULL,
-			date DATETIME NOT NULL,
-            PRIMARY KEY (username, target, date),
-            FOREIGN KEY (username) REFERENCES users (username),
-            FOREIGN KEY (target) REFERENCES users (username),
-            FOREIGN KEY (target) REFERENCES gallery (username),
-            FOREIGN KEY (date) REFERENCES gallery (date)
-        ); """
-    table_create_comments = """
-        CREATE TABLE IF NOT EXISTS comments (
-			username TEXT NOT NULL,
-			date DATETIME NOT NULL,
-			title TEXT NOT NULL,
-			message TEXT NOT NULL,
-            PRIMARY KEY (username, date),
-            FOREIGN KEY (username) REFERENCES users (username),
-            FOREIGN KEY (username) REFERENCES gallery (username),
-            FOREIGN KEY (date) REFERENCES gallery (date)
-        ); """
-
-    db_cursor.execute(table_create_users)
-    db_cursor.execute(table_create_gallery)
-    db_cursor.execute(table_create_favourites)
-    db_cursor.execute(table_create_comments)
-
-    db_connection.commit()
+def get_user():
+    if 'username' in session:
+        return session['username']
+    return None
 
 
 # App routing
 @app.route('/')
 def home():
-    return render_template('home.html', pagetitle=app_name)
+    user = get_user()
+
+    return render_template('home.html', pagetitle=app_name, user=user)
 
 
 @app.route('/browse/')
 def browse():
-    return render_template('browse.html', pagetitle=app_name)
+    user = get_user()
+
+    return render_template('browse.html', pagetitle=app_name, user=user)
 
 
 @app.route('/search/', methods=['POST'])
@@ -90,78 +46,136 @@ def search():
 
 @app.route('/search/<urlquery>')
 def searchterm(urlquery=None):
+    user = get_user()
+
     if urlquery == None:
         return redirect(url_for('.home'))
     else:
-        return render_template('home.html', pagetitle=urlquery)
+        return render_template('home.html', pagetitle=urlquery, user=user)
 
 
-@app.route('/categories/')
-@app.route('/categories/<urlcategory>')
-def categories(urlcategory=None):
-    if urlcategory == None:
-        return render_template('categories.html', pagetitle=app_name)
-    else:
-        return render_template('browse.html', pagetitle=urlcategory)
-
-
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template('login.html')
+    if get_user():
+        return redirect(url_for('home'))
+
+    error = None
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        # SALT PASSWORD
+        if not db_user_exists(username):
+            error = 'User does not exist.'
+        elif not db_match_password(username, password):
+            error = 'Invalid password.'
+        else:
+            session['username'] = username
+            return redirect(url_for('home'))
+    return render_template('login.html', pagetitle='Log in', error=error)
 
 
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    return render_template('register.html')
+    if get_user():
+        return redirect(url_for('home'))
+
+    error = None
+    if request.method == 'POST':
+        email = request.form['email']
+        username = request.form['username']
+        password1 = request.form['password1']
+        password2 = request.form['password2']
+
+        if db_user_exists(username):
+            error = 'Username already taken.'
+        elif password1 != password2:
+            error = 'Passwords do not match.'
+        else:
+            # SALT PASSWORD
+            db_register(email, username, password1)
+            session['username'] = username
+            return redirect(url_for('home'))
+    return render_template('register.html', pagetitle='Register', error=error)
 
 
-@app.route('/reset')
+@app.route('/reset', methods=['GET', 'POST'])
 def reset():
-    return render_template('reset.html')
+    if get_user():
+        return redirect(url_for('home'))
+
+    return render_template('reset.html', pagetitle='Reset')
 
 
 @app.route('/logout')
 def logout():
-    return redirect(url_for('.home'))
+    if 'username' in session:
+        session.pop('username', None)
+
+    return redirect(url_for('home'))
 
 
 @app.route('/<urluser>')
 def user(urluser=None):
-    return render_template('user.html', pagetitle=urluser)
+    user = get_user()
+
+    return render_template('user.html', pagetitle=urluser, user=user)
 
 
 @app.route('/<urluser>/gallery/')
 def gallery(urluser=None):
-    return render_template('gallery.html', pagetitle=urluser)
+    user = get_user()
+
+    return render_template('gallery.html', pagetitle=urluser, user=user)
 
 
 @app.route('/<urluser>/favourites/')
 def favourites(urluser=None):
-    return render_template('gallery.html', pagetitle=urluser)
+    user = get_user()
+
+    return render_template('gallery.html', pagetitle=urluser, user=user)
 
 
 @app.route('/<urluser>/<urltitle>')
 def picture(urluser=None, urltitle=None):
-    return render_template('picture.html', pagetitle=urltitle)
+    user = get_user()
+
+    return render_template('picture.html', pagetitle=urltitle, user=user)
 
 
 @app.route('/<urluser>/<urltitle>/edit')
 def edit(urluser=None, urltitle=None):
-    return render_template('edit.html')
+    user = get_user()
+
+    if not user or user != urluser:
+        return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
+
+    return render_template('edit.html', pagetitle='Edit', user=user)
 
 
-@app.route('/<urluser>/upload')
-def upload(urluser=None):
-    return render_template('upload.html')
+@app.route('/upload')
+def upload():
+    user = get_user()
+
+    if not user:
+        return redirect(url_for('login'))
+
+    return render_template('upload.html', pagetitle='Upload', user=user)
 
 
-@app.route('/<urluser>/settings')
-def settings(urluser=None):
-    return render_template('settings.html')
+@app.route('/settings')
+def settings():
+    user = get_user()
+
+    if not user:
+        return redirect(url_for('login'))
+
+    return render_template('settings.html', pagetitle='Settings', user=user)
 
 
 @app.route('/error/<int:status>')
 def error(status=404):
+    user = get_user()
+
     message = ''
     if status == 404:
         message = 'Sorry, the page you requested is not available.'
@@ -169,7 +183,7 @@ def error(status=404):
         message = 'Sorry, you cannot access this page this way.'
     if status == 418:
         message = 'Sorry, this page has not been added yet.'
-    return render_template('error.html', message=message)
+    return render_template('error.html', pagetitle=status, message=message, user=user)
 
 
 # Error handling
@@ -233,4 +247,3 @@ if __name__ == '__main__':
         port=int(app.config['port']),
         ssl_context=('cert.pem', 'key.pem')
     )
-    db_connection.close()
