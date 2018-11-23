@@ -2,6 +2,42 @@
 
 {% block content %}
 
-<p>User</p>
+<div class="centre row">
+    <div class="col form-centre">
+        <div class="avatar avatar-medium row">
+            <img src="{{ page_user['avatar'] }}">
+        </div>
+        <h2 class="row">{{ page_user['username'] }}</h2>
+        <h5 class="row">Joined: {{ page_user['date_joined_formatted'] }}</h5>
+        {% if user %}
+        {% if user['rank'] == 2 %}
+        <a href="{{ url_for('remove_user', urluser=page_user['username']) }}"><button class="btn btn-danger">Remove user</button></a>
+        {% endif %}
+        {% if page_user['username'] not in friends %}
+        <a href="{{ url_for('add_friend', urluser=page_user['username']) }}"><button class="btn btn-success">Add friend</button></a>
+        {% else %}
+        <a href="{{ url_for('remove_friend', urluser=page_user['username']) }}"><button class="btn btn-success">Remove friend</button></a>
+        {% endif %}
+        {% endif %}
+    </div>
+    <div class="col">
+        <h3 class="row">Bio</h3>
+        <p class="row">{{ page_user['description'] }}</p>
+        <h3 class="row">Gallery</h3>
+        {% if pictures %}
+        <div class="col centre">
+            <div class="row settings-centre">
+                <ul>
+                    {% for p in pictures %}
+                    <li>{{ p['date_uploaded_formatted'] }} <a href="{{ url_for('user', urluser=p['author']) }}">{{ p['author'] }}</a>: <a href="{{ url_for('picture', urluser=p['author'], urltitle=p['date_uploaded']) }}">{{ p['title'] }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% else %}
+        <p class="row">This user hasn't uploaded anything yet...</p>
+        {% endif %}
+    </div>
+</div>
 
 {% endblock %}

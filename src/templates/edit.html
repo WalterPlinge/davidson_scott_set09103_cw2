@@ -2,6 +2,19 @@
 
 {% block content %}
 
-<p>Edit</p>
+<div class="centre">
+    <form class="settings-centre row" enctype="multipart/form-data" method="POST">
+        <div class="avatar avatar-medium">
+            <img src="{{ picture['file'] }}">
+        </div>
+        <input class="form-control form-text text-center" name="title" placeholder="Title" type="text" value="{{ request.form.title }}" required>
+        <textarea class="form-control form-text text-center" cols="64" name="description" placeholder="Description" rows="5">{{ request.form.description }}</textarea>
+        <input class="form-control form-text text-center" name="password" placeholder="Password" type="password" value="{{ request.form.password }}" required>
+        <button class="btn btn-sm btn-success form-control" style="max-width: 100px;" type="submit">Save</button>
+    </form>
+    {% if message %}
+    <p class="message">{{ message }}</p>
+    {% endif %}
+</div>
 
 {% endblock %}

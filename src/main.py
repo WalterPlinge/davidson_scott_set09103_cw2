@@ -1,14 +1,19 @@
+import bcrypt
 import ConfigParser
+import database
+import datetime
 import logging
 import hashlib
 import os
 import random
+import shutil
 import time
 import uuid
 
-from database import db_create, db_match_password, db_register, db_user_exists
+from datetime import datetime
 from flask import abort, flash, Flask, g, json, make_response, redirect, render_template, request, session, url_for
 from logging.handlers import RotatingFileHandler
+from werkzeug.utils import secure_filename
 
 
 # Flask app and secret key
@@ -17,25 +22,101 @@ app.secret_key = os.urandom(64)
 app_name = "PixlHaven"
 
 
-def get_user():
-    if 'username' in session:
-        return session['username']
-    return None
+def get_time(etime):
+    return datetime.utcfromtimestamp(etime).strftime('%Y%m%d%H%M%S')
+
+
+def get_formatted_time(etime):
+    return datetime.utcfromtimestamp(etime).strftime('%H:%M %d-%m-%Y')
+
+
+def get_epoch_time(ftime):
+    return time.mktime(time.strptime(ftime, '%Y%m%d%H%M%S'))
+
+
+def logged_in():
+    return 'username' in session
+
+
+def get_user(username=None):
+    user = None
+    if username:
+        user = database.get_user(username)
+    elif logged_in():
+        user = database.get_user(session['username'])
+    else:
+        return None
+
+    if not user:
+        return None
+
+    file = app.config['upload_folder'] + user['username'] + '/' + user['username'] + '.png'
+    avatar = None
+    if os.path.isfile(file):
+        avatar = url_for('static', filename='uploads/' + user['username'] + '/' + user['username'] + '.png')
+    else:
+        avatar = url_for('static', filename='img/default_avatar.png')
+
+    return {
+        'username': user['username'],
+        'password': user['password'],
+        'email': user['email'],
+        'date_joined': user['date_joined'],
+        'date_joined_formatted': get_formatted_time(get_epoch_time(user['date_joined'])),
+        'rank': user['rank'],
+        'description': user['description'],
+        'avatar': avatar,
+    }
+
+
+def get_picture(user, title):
+    picture = database.get_picture(user, title)
+    if not picture:
+        return None
+    file = url_for('static', filename=user + '/' + title + '.png')
+
+    return {
+        'file': file,
+        'author': picture[0],
+        'date_uploaded': picture[1],
+        'date_uploaded_formatted': get_formatted_time(get_epoch_time(picture[1])),
+        'title': picture[2],
+        'description': picture[3],
+    }
+
+
+def get_pictures(user=None):
+    if not user and logged_in():
+        user = session['username']
+
+    pictures = database.get_pictures(user)
+
+    if not pictures:
+        return None
+
+    output = []
+    for p in pictures:
+        output.append({
+            'file': url_for('static', filename=p['author'] + '/' + p['date_uploaded'] + '.png'),
+            'author': p['author'],
+            'date_uploaded': p['date_uploaded'],
+            'date_uploaded_formatted': get_formatted_time(get_epoch_time(p['date_uploaded'])),
+            'title': p['title'],
+            'description': p['description']
+        })
+
+    return output
 
 
 # App routing
 @app.route('/')
 def home():
-    user = get_user()
-
-    return render_template('home.html', pagetitle=app_name, user=user)
+    return render_template('home.html', pagetitle=app_name, user=get_user())
 
 
 @app.route('/browse/')
 def browse():
-    user = get_user()
-
-    return render_template('browse.html', pagetitle=app_name, user=user)
+    return render_template('gallery.html', pagetitle=app_name, user=get_user(), pictures=get_pictures())
 
 
 @app.route('/search/', methods=['POST'])
@@ -46,27 +127,25 @@ def search():
 
 @app.route('/search/<urlquery>')
 def searchterm(urlquery=None):
-    user = get_user()
-
     if urlquery == None:
         return redirect(url_for('.home'))
     else:
-        return render_template('home.html', pagetitle=urlquery, user=user)
+        return render_template('search.html', pagetitle=urlquery, user=get_user(), pictures=database.search_pictures(urlquery))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if get_user():
+    if logged_in():
         return redirect(url_for('home'))
 
     error = None
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # SALT PASSWORD
-        if not db_user_exists(username):
+        user = database.get_user(username)
+        if not user:
             error = 'User does not exist.'
-        elif not db_match_password(username, password):
+        elif not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             error = 'Invalid password.'
         else:
             session['username'] = username
@@ -76,7 +155,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if get_user():
+    if logged_in():
         return redirect(url_for('home'))
 
     error = None
@@ -86,13 +165,14 @@ def register():
         password1 = request.form['password1']
         password2 = request.form['password2']
 
-        if db_user_exists(username):
+        if database.get_user(username):
             error = 'Username already taken.'
         elif password1 != password2:
             error = 'Passwords do not match.'
         else:
-            # SALT PASSWORD
-            db_register(email, username, password1)
+            database.add_user(email, username, bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt()), get_time(time.time()))
+            if not os.path.isdir(app.config['upload_folder'] + username + '/'):
+                os.mkdir(app.config['upload_folder'] + username + '/')
             session['username'] = username
             return redirect(url_for('home'))
     return render_template('register.html', pagetitle='Register', error=error)
@@ -100,82 +180,224 @@ def register():
 
 @app.route('/reset', methods=['GET', 'POST'])
 def reset():
-    if get_user():
+    if logged_in():
         return redirect(url_for('home'))
 
-    return render_template('reset.html', pagetitle='Reset')
+    message = None
+    if request.method == 'POST':
+        email = request.form['email']
+        username = request.form['username']
+        password1 = request.form['password1']
+        password2 = request.form['password2']
+
+        user = database.get_user(username)
+        if not user:
+            message = 'User does not exist.'
+        elif password1 != password2:
+            message = 'Passwords do not match'
+        elif not user['email'] != email:
+            message = 'Incorrect email'
+        else:
+            database.update_user(username, bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt()), email, user['description'])
+            session['username'] = username
+            return redirect(url_for('home'))
+
+    return render_template('reset.html', pagetitle='Reset', message=message)
 
 
 @app.route('/logout')
 def logout():
-    if 'username' in session:
+    if logged_in():
         session.pop('username', None)
 
     return redirect(url_for('home'))
 
 
-@app.route('/<urluser>')
+@app.route('/user/<urluser>')
 def user(urluser=None):
-    user = get_user()
+    page_user = get_user(urluser)
 
-    return render_template('user.html', pagetitle=urluser, user=user)
+    if not page_user:
+        return redirect(url_for('home'))
+
+    friends = None
+    if logged_in():
+        friends = database.get_friends(get_user()['username'])
+        if not friends:
+            friends = []
+
+    print(friends)
+    return render_template('user.html', pagetitle=urluser, user=get_user(), page_user=page_user, pictures=get_pictures(urluser), friends=friends)
 
 
-@app.route('/<urluser>/gallery/')
+@app.route('/user/<urluser>/gallery/')
 def gallery(urluser=None):
-    user = get_user()
-
-    return render_template('gallery.html', pagetitle=urluser, user=user)
+    return render_template('gallery.html', pagetitle=urluser, user=get_user(), pictures=get_pictures(urluser))
 
 
-@app.route('/<urluser>/favourites/')
+@app.route('/user/<urluser>/favourites/')
 def favourites(urluser=None):
-    user = get_user()
-
-    return render_template('gallery.html', pagetitle=urluser, user=user)
+    return render_template('gallery.html', pagetitle=urluser, user=get_user())
 
 
-@app.route('/<urluser>/<urltitle>')
+@app.route('/user/<urluser>/<urltitle>', methods=['GET', 'POST'])
 def picture(urluser=None, urltitle=None):
-    user = get_user()
+    picture = get_picture(urluser, urltitle)
+    print(picture)
+    if not picture:
+        return redirect(url_for('user', urluser=urluser))
 
-    return render_template('picture.html', pagetitle=urltitle, user=user)
+    if request.method == 'POST':
+        if not logged_in():
+            return redirect(url_for('login'))
+
+        username = get_user()['username']
+        author = urluser
+        date_uploaded = urltitle
+        date_added = get_time(time.time())
+        message = request.form['message']
+        database.add_comment(username, author, date_uploaded, date_added, message)
+        return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
+
+    return render_template('picture.html', pagetitle=urltitle, user=get_user(), picture=picture)
 
 
-@app.route('/<urluser>/<urltitle>/edit')
+@app.route('/user/<urluser>/<urltitle>/edit', methods=['GET', 'POST'])
 def edit(urluser=None, urltitle=None):
     user = get_user()
 
-    if not user or user != urluser:
+    if not user or user['username'] != urluser:
         return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
-    return render_template('edit.html', pagetitle='Edit', user=user)
+    picture = get_picture(urluser, urltitle)
+
+    message = None
+    if request.method == 'POST':
+        if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password']):
+            message = 'Incorrect password'
+        else:
+            database.edit_picture(picture['author'], picture['date'], request.form['title'], request.form['description'])
+            message = 'Changes saved successfully'
+            picture = get_picture(urluser, urltitle)
+
+    request.form.title = picture['title']
+    request.form.description = picture['description']
+
+    return render_template('edit.html', pagetitle='Edit', user=user, picture=picture, message=message)
 
 
-@app.route('/upload')
+@app.route('/upload', methods=['GET', 'POST'])
 def upload():
     user = get_user()
-
     if not user:
         return redirect(url_for('login'))
 
-    return render_template('upload.html', pagetitle='Upload', user=user)
+    username = user['username']
+    message = None
+    if request.method == 'POST':
+        if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password'].encode('utf-8')):
+            message = 'Invalid password.'
+        elif 'image' not in request.files:
+            message = 'No file found.'
+        else:
+            file = request.files['image']
+            if file.filename == '':
+                message = 'File not valid.'
+            else:
+                extension = os.path.splitext(file.filename)[1]
+                if extension not in ['.png', '.jpg', '.jpeg']:
+                    message = 'File extension not supported.'
+                else:
+                    date = get_time(time.time())
+                    database.add_picture(username, date, request.form['title'], request.form['description'])
+                    file.save(app.config['upload_folder'] + username + '/' + date + '.png')
+                    return redirect(url_for('picture', urluser=username, urltitle=date))
+
+    return render_template('upload.html', pagetitle='Upload', user=user, message=message)
 
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    user = get_user()
-
-    if not user:
+    if not logged_in():
         return redirect(url_for('login'))
 
-    return render_template('settings.html', pagetitle='Settings', user=user)
+    user = get_user()
+    message = None
+    if request.method == 'POST':
+        username = user['username']
+        if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password'].encode('utf-8')):
+            message = "Incorrect password."
+        else:
+            database.update_user(username, user['password'], request.form['email'], request.form['description'])
+            message = "Changes saved successfully."
+            if 'image' not in request.files:
+                message = 'File not found.'
+            else:
+                file = request.files['image']
+                if file.filename == '':
+                    message = 'Invalid file name.'
+                else:
+                    extension = os.path.splitext(file.filename)[1]
+                    if extension not in ['.png', '.jpg', '.jpeg']:
+                        message = 'Invalid file type.'
+                    else:
+                        file.save(app.config['upload_folder'] + username + '/' + username + '.png')
+                        user = get_user()
+    else:
+        request.form.email = user['email']
+        request.form.description = user['description']
+
+    return render_template('settings.html', pagetitle='Settings', user=user, message=message)
+
+
+@app.route('/addfriend/<urluser>')
+def add_friend(urluser=None):
+    if not logged_in():
+        return redirect(url_for('login'))
+
+    if urluser and urluser in database.get_friends(get_user()):
+        database.add_friend(get_user()['username'], urluser, get_time(time.time()))
+
+    return redirect(url_for('user', urluser=urluser))
+
+
+@app.route('/removefriend/<urluser>')
+def remove_friend(urluser=None):
+    if logged_in() and urluser:
+        database.remove_friend(get_user()['username'], urluser)
+
+    return redirect(url_for('user', urluser=urluser))
+
+
+@app.route('/remove/<urluser>/<urltitle>')
+def remove_picture(urluser=None, urltitle=None):
+    user = get_user()
+    other = get_user(urluser)
+    picture = get_picture(urluser, urltitle)
+
+    if user and other and picture:
+        if user['username'] == other['username'] or user['rank'] >= 1:
+            database.remove_picture(urluser, urltitle)
+            os.remove(app.config['upload_folder'] + urluser + '/' + urltitle + '.png')
+
+    return redirect(url_for('user', urluser=urluser))
+
+
+@app.route('/remove/<urluser>')
+def remove_user(urluser=None):
+    user = get_user()
+    other = get_user(urluser)
+
+    if user and other:
+        if user['username'] == other['username'] or user['rank'] == 2:
+            database.remove_user(urluser)
+            shutil.rmtree(app.config['upload_folder'] + urluser + '/')
+
+    return redirect(url_for('home'))
 
 
 @app.route('/error/<int:status>')
 def error(status=404):
-    user = get_user()
-
     message = ''
     if status == 404:
         message = 'Sorry, the page you requested is not available.'
@@ -183,7 +405,7 @@ def error(status=404):
         message = 'Sorry, you cannot access this page this way.'
     if status == 418:
         message = 'Sorry, this page has not been added yet.'
-    return render_template('error.html', pagetitle=status, message=message, user=user)
+    return render_template('error.html', pagetitle=status, message=message, user=get_user())
 
 
 # Error handling
@@ -213,6 +435,7 @@ def init(app):
         app.config['ip_address'] = config.get('config', 'ip_address')
         app.config['port'] = config.get('config', 'port')
         app.config['url'] = config.get('config', 'url')
+        app.config['upload_folder'] = config.get('config', 'upload_folder')
 
         app.config['log_file'] = config.get('logging', 'name')
         app.config['log_location'] = config.get('logging', 'location')
@@ -241,7 +464,7 @@ def logs(app):
 if __name__ == '__main__':
     init(app)
     logs(app)
-    db_create()
+    database.create()
     app.run(
         host=app.config['ip_address'],
         port=int(app.config['port']),

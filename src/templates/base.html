@@ -26,27 +26,19 @@
 			<div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav mr-auto">
 					<a class="nav-link" href="{{ url_for('browse') }}">Browse</a>
-					<!-- Search -->
-					<!---
-					<form class="navbar-form form-inline my-2 my-lg-0" action="/search/" method="post" name="form">
-						<div class="form-group">
-							<input class="btn-dark btn-outline-secondary form-search form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" id="search">
-						</div>
-						<button class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit" id="submit">Search</button>
-					</form>
-					-->
 					<form class="navbar-form navbar-left form-inline my-2 my-lg-0" action="/search/" method="post" name="form">
 						<div class="form-group">
-							<input type="text" class="btn-dark form-search form-control" name="search" id="search" placeholder="Search">
+							<input type="text" class="btn-dark form-search form-control" name="search" id="search" placeholder="Search for something...">
 						</div>
-						<button type="submit" name="submit" id="submit" class="btn btn-default">Submit</button>
+						<button type="submit" name="submit" id="submit" class="btn btn-info">Go</button>
 					</form>
 				</ul>
 				<!-- Login/Register or User -->
 				<ul class="navbar-nav">
 					{% if user %}
-					<a class="nav-link" href="{{ url_for('user', urluser=user) }}">{{ user }}</a>
-					<a class="nav-link" href="{{ url_for('gallery', urluser=user) }}">Gallery</a>
+					<a class="nav-link" href="{{ url_for('user', urluser=user['username']) }}">{{ user['username'] }}</a>
+					<a class="nav-link" href="{{ url_for('gallery', urluser=user['username']) }}">Gallery</a>
+					<a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
 					<a class="nav-link" href="{{ url_for('settings') }}">Settings</a>
 					<a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
 					{% else %}

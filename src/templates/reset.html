@@ -2,6 +2,18 @@
 
 {% block content %}
 
-<p>Reset</p>
+<div class="centre">
+    <form class="form-centre" method="POST">
+        <label>Reset password</label>
+        <input class="form-control-plaintext form-text" name="email" placeholder="E-mail" type="text" value="{{ request.form.email }}" required>
+        <input class="form-control-plaintext form-text" name="username" placeholder="Username" type="text" value="{{ request.form.username }}" required>
+        <input class="form-control-plaintext form-text" name="password1" placeholder="Password" type="password" value="{{ request.form.password1 }}" required>
+        <input class="form-control-plaintext form-text" name="password2" placeholder="Re-enter password" type="password" value="{{ request.form.password2 }}" required>
+        <button class="btn btn-sm btn-success form-control" type="submit">Reset</button>
+    </form>
+    {% if error %}
+    <p class="error"><strong>Error:</strong>{{ error }}</p>
+    {% endif %}
+</div>
 
 {% endblock %}

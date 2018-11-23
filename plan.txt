@@ -101,9 +101,21 @@ Files
 			error.html
 		var
 		main.py
-Variables
-	base
-		pagetitle
-		user
+Tasks
+x	register
+x	login
+x	reset
+x	user page
+		gallery
+		favourites
+		watch list
+x		remove button
+x	picture page
+x		edit
+x		comment
+x		comments
+x		remove
+	gallery
+		favourites
+		browse
 	search
-		urlquery

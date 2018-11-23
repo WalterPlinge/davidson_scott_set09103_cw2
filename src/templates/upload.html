@@ -2,6 +2,18 @@
 
 {% block content %}
 
-<p>Upload</p>
+<div class="centre">
+    <form class="settings-centre row" enctype="multipart/form-data" method="POST">
+        <label>Choose image file... <input name="image" type="file" required></label>
+        <input class="form-control form-text text-center" name="title" placeholder="Title" type="text" value="{{ request.form.title }}" required>
+        <textarea class="form-control form-text text-center" cols="64" name="description" placeholder="Description" rows="5">{{ request.form.description }}</textarea>
+        <input class="form-control form-text text-center" name="password" placeholder="Password" type="password" value="{{ request.form.password }}" required>
+        <button class="btn btn-sm btn-success form-control" style="max-width: 100px;" type="submit">Upload</button>
+    </form>
+    {% if message %}
+    <p class="message">{{ message }}</p>
+    {% endif %}
+</div>
+
 
 {% endblock %}

@@ -2,6 +2,27 @@
 
 {% block content %}
 
-<p>{{ user }} settings</p>
+<div class="centre">
+    <div class="settings-centre row">
+        <div class="avatar avatar-big col">
+            <img src="{{ user['avatar'] }}">
+        </div>
+        <div class="col">
+            <h2>{{ user['username'] }}</h2>
+            <h5>Joined: {{ user['date_joined'] }}</h5>
+        </div>
+    </div>
+    <form class="settings-centre" enctype="multipart/form-data" method="POST">
+        <label>Change avatar... <input name="image" type="file"></label>
+        <input class="form-control form-text text-center" name="email" placeholder="E-mail" type="email" value="{{ request.form.email }}" required>
+        <textarea class="form-control form-text text-center" cols="64" name="description" placeholder="Description" rows="5">{{ request.form.description }}</textarea>
+        <input class="form-control form-text text-center" name="password" placeholder="Password" type="password" value="{{ request.form.password }}" required>
+        <button class="btn btn-sm btn-success form-control" style="max-width: 100px;" type="submit">Save</button>
+    </form>
+    {% if message %}
+    <p class="message">{{ message }}</p>
+    {% endif %}
+    <a href="{{ url_for('remove_user', urluser=user['username']) }}"><button class="btn btn-danger">Delete account</button></a>
+</div>
 
 {% endblock %}

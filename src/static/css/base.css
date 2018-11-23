@@ -1,14 +1,55 @@
 main {
-  margin: 32px
+    margin: 32px
+}
+
+.avatar {
+    margin: 25px auto;
+    overflow: hidden;
+    position: relative;
+}
+
+.avatar img {
+    height: 100%;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.avatar-big {
+    height: 256px;
+    width: 256px;
+}
+
+.avatar-medium {
+    height: 128px;
+    widows: 128px;
+}
+
+.avatar-small {
+    height: 64px;
+    widows: 64px;
+}
+
+.avatar-tiny {
+    height: 32px;
+    widows: 32px;
 }
 
 .centre {
-  text-align: center;
+    text-align: center;
 }
 
 .form-centre {
-  display: inline-block;
-  margin: 16px;
-  max-width: 255px;
-  padding: 16px;
+    display: inline-block;
+    margin: 16px;
+    max-width: 255px;
+    padding: 16px;
+}
+
+.settings-centre {
+    display: inline-block;
+    margin: 8px;
+    max-width: 511px;
+    padding: 8px;
 }

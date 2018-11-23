@@ -2,6 +2,38 @@
 
 {% block content %}
 
-<p>Picture</p>
+<div class="col settings-centre">
+    <div class="row">
+        <img src="{{ picture['file'] }}" width="100%">
+    </div>
+    <div class="row">
+        {% if user['username'] == picture['author'] %}
+        <a href="{{ url_for('edit', urluser=picture['author'], urltitle=picture['title']) }}"><button class="btn">Edit</button></a>
+        {% endif %}
+        {% if user['username'] == picture['author'] or user['rank'] > 0 %}
+        <a href="{{ url_for('remove_picture', urluser=picture['author'], urltitle=picture['title']) }}"><button class="btn btn-danger">Delete</button></a>
+        {% endif %}
+        <label>{{ picture['title'] }}</label>
+        <label><a href="{{ url_for('user', urluser=picture['author']) }}">{{ picture['author'] }}</a></label>
+        <p>{{ picture['description'] }}</p>
+    </div>
+    <div class="row">
+        <form method="POST">
+            <textarea class="form-control form-text text-center" cols="64" name="comment" placeholder="Write your own comment..." rows="2" required></textarea>
+            <button class="btn btn-sm btn-success form-control" style="max-width: 100px;" type="submit">Post</button>
+        </form>
+    </div>
+    <div class="row">
+        <ul>
+            {% for comment in picture['comments'] %}
+            <li>
+                <strong><a href="{{ url_for('user', urluser=comment['username']) }}">{{ comment['username'] }}</a></strong> {{ comment['date'] }}
+                <br>
+                {{ comment['message'] }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
 
 {% endblock %}
