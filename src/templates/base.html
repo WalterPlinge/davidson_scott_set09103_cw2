@@ -38,6 +38,8 @@
 					{% if user %}
 					<a class="nav-link" href="{{ url_for('user', urluser=user['username']) }}">{{ user['username'] }}</a>
 					<a class="nav-link" href="{{ url_for('gallery', urluser=user['username']) }}">Gallery</a>
+					<a class="nav-link" href="{{ url_for('favourites', urluser=user['username']) }}">Favourites</a>
+					<a class="nav-link" href="{{ url_for('friends', urluser=user['username']) }}">Friends</a>
 					<a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
 					<a class="nav-link" href="{{ url_for('settings') }}">Settings</a>
 					<a class="nav-link" href="{{ url_for('logout') }}">Log out</a>

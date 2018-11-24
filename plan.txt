@@ -119,3 +119,5 @@ x		remove
 		favourites
 		browse
 	search
+
+Errorss

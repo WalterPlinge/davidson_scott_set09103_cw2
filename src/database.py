@@ -1,24 +1,3 @@
-# Create
-# Add user
-# Get user
-# Update user
-# Remove user
-# Add friend
-# Get friends
-# Remove friend
-# Add picture
-# Get picture
-# Edit picture
-# Remove picture
-# Add favourite
-# Get favourites
-# Remove favourite
-# Add comment
-# Get comments
-# Update comment
-# Remove comment
-# Match password
-
 import bcrypt
 import sqlite3
 
@@ -195,7 +174,7 @@ def add_friend(username, friend, date_added):
 
 
 def get_friends(username):
-    table_get_friends = 'SELECT friend FROM friends WHERE username = ? ORDER BY date_added;'
+    table_get_friends = 'SELECT friend FROM friends WHERE username = ? ORDER BY date_added DESC;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -273,7 +252,7 @@ def get_picture(username, date):
         return None
 
     return {
-        'username': p[0],
+        'author': p[0],
         'date_uploaded': p[1],
         'title': p[2],
         'description': p[3]
@@ -284,7 +263,7 @@ def get_pictures(username=None):
     table_get_pictures = 'SELECT username, date_uploaded, title, description FROM gallery '
     if username:
         table_get_pictures += 'WHERE username = ? '
-    table_get_pictures += 'ORDER BY date_uploaded LIMIT 50;'
+    table_get_pictures += 'ORDER BY date_uploaded DESC LIMIT 50;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -314,12 +293,44 @@ def get_pictures(username=None):
     return output
 
 
-def search_pictures(text):
-    table_search_pictures = 'SELECT username, date_uploaded, title, description FROM gallery WHERE username LIKE "%?%" OR date_uploaded LIKE "%?%" OR title LIKE "%?%" OR description LIKE "%?%" ORDER BY date_uploaded;'
+def get_friends_pictures(username=None):
+    if not username:
+        return None
+
+    table_get_friends_pictures = 'SELECT gallery.username, gallery.date_uploaded, gallery.title, gallery.description FROM gallery JOIN friends ON friends.friend = gallery.username WHERE friends.username = ? ORDER BY gallery.date_uploaded DESC;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
-    cur.execute(table_search_pictures)
+    cur.execute(table_get_friends_pictures, [username])
+
+    pictures = cur.fetchall()
+
+    cur.close()
+    conn.commit()
+    conn.close()
+
+    if not pictures:
+        return None
+
+    output = []
+    for p in pictures:
+        output.append({
+            'author': p[0],
+            'date_uploaded': p[1],
+            'title': p[2],
+            'description': p[3]
+        })
+
+    return output
+
+
+def search_pictures(text):
+    query = '%' + text + '%'
+    table_search_pictures = 'SELECT username, date_uploaded, title, description FROM gallery WHERE username LIKE ? OR date_uploaded LIKE ? OR title LIKE ? OR description LIKE ? ORDER BY date_uploaded DESC;'
+
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    cur.execute(table_search_pictures, [query, query, query, query])
 
     pictures = cur.fetchall()
 
@@ -356,7 +367,7 @@ def edit_picture(username, date, title, description):
 
 
 def remove_picture(username, date):
-    table_remove_picture = 'DELETE FROM gallery WHERE username = ? AND date = ?;'
+    table_remove_picture = 'DELETE FROM gallery WHERE username = ? AND date_uploaded = ?;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -392,7 +403,7 @@ def add_favourite(username, author, date_uploaded, date_added):
 
 
 def get_favourites(username):
-    table_get_favourites = 'SELECT username, author, date_uploaded, date_added FROM favourites WHERE username = ? ORDER BY date_added;'
+    table_get_favourites = 'SELECT username, author, date_uploaded, date_added FROM favourites WHERE username = ? ORDER BY date_added DESC;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -419,7 +430,7 @@ def get_favourites(username):
 
 
 def remove_favourite(username, author, date_uploaded):
-    table_remove_favourite = 'DELETE FROM favourites WHERE username = ? AND author = ? AND date = ?;'
+    table_remove_favourite = 'DELETE FROM favourites WHERE username = ? AND author = ? AND date_uploaded = ?;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -457,7 +468,7 @@ def add_comment(username, author, date_uploaded, date_added, message):
 
 
 def get_comments(author, date_uploaded):
-    table_get_comments = 'SELECT username, author, date_uploaded, date_added, message FROM comments WHERE author = ? AND date_uploaded = ? ORDER BY date_added;'
+    table_get_comments = 'SELECT username, author, date_uploaded, date_added, message FROM comments WHERE author = ? AND date_uploaded = ? ORDER BY date_added DESC;'
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
@@ -497,7 +508,7 @@ def edit_comment(username, author, date_uploaded, date_added, message):
     conn.close()
 
 
-def delete_comment(username, author, date_uploaded, date_added):
+def remove_comment(username, author, date_uploaded, date_added):
     table_remove_comment = 'DELETE FROM comments WHERE username = ? AND author = ? AND date_uploaded = ? AND date_added = ?;'
 
     conn = sqlite3.connect(db_file)

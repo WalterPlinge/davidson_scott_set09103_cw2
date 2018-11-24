@@ -9,14 +9,20 @@
         </div>
         <h2 class="row">{{ page_user['username'] }}</h2>
         <h5 class="row">Joined: {{ page_user['date_joined_formatted'] }}</h5>
-        {% if user %}
-        {% if user['rank'] == 2 %}
+        {% if user and user['rank'] == 2 %}
         <a href="{{ url_for('remove_user', urluser=page_user['username']) }}"><button class="btn btn-danger">Remove user</button></a>
         {% endif %}
-        {% if page_user['username'] not in friends %}
+        {% if not user %}
+        <a href="{{ url_for('login') }}"><button class="btn btn-success">Add friend</button></a>
+        {% else %}
+        {% if user['username'] != page_user['username'] %}
+        {% if not friends or friends and page_user['username'] not in friends %}
         <a href="{{ url_for('add_friend', urluser=page_user['username']) }}"><button class="btn btn-success">Add friend</button></a>
         {% else %}
+        {% if friends and page_user['username'] in friends %}
         <a href="{{ url_for('remove_friend', urluser=page_user['username']) }}"><button class="btn btn-success">Remove friend</button></a>
+        {% endif %}
+        {% endif %}
         {% endif %}
         {% endif %}
     </div>

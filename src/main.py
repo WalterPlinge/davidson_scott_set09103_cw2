@@ -69,26 +69,23 @@ def get_user(username=None):
     }
 
 
-def get_picture(user, title):
-    picture = database.get_picture(user, title)
+def get_picture(user, date):
+    picture = database.get_picture(user, date)
     if not picture:
         return None
-    file = url_for('static', filename=user + '/' + title + '.png')
 
+    file = url_for('static', filename='uploads/' + picture['author'] + '/' + picture['date_uploaded'] + '.png')
     return {
         'file': file,
-        'author': picture[0],
-        'date_uploaded': picture[1],
-        'date_uploaded_formatted': get_formatted_time(get_epoch_time(picture[1])),
-        'title': picture[2],
-        'description': picture[3],
+        'author': picture['author'],
+        'date_uploaded': picture['date_uploaded'],
+        'date_uploaded_formatted': get_formatted_time(get_epoch_time(picture['date_uploaded'])),
+        'title': picture['title'],
+        'description': picture['description'],
     }
 
 
 def get_pictures(user=None):
-    if not user and logged_in():
-        user = session['username']
-
     pictures = database.get_pictures(user)
 
     if not pictures:
@@ -106,6 +103,82 @@ def get_pictures(user=None):
         })
 
     return output
+
+
+def get_friends_pictures(user=None):
+    pictures = database.get_friends_pictures(user)
+
+    if not pictures:
+        return None
+
+    output = []
+    for p in pictures:
+        output.append({
+            'file': url_for('static', filename=p['author'] + '/' + p['date_uploaded'] + '.png'),
+            'author': p['author'],
+            'date_uploaded': p['date_uploaded'],
+            'date_uploaded_formatted': get_formatted_time(get_epoch_time(p['date_uploaded'])),
+            'title': p['title'],
+            'description': p['description']
+        })
+
+    return output
+
+
+def get_favourites(user=None):
+    if not user and logged_in():
+        user = session['username']
+
+    favourites = database.get_favourites(user)
+
+    if not favourites:
+        return None
+
+    output = []
+    for f in favourites:
+        output.append({
+            'file': url_for('static', filename=f['author'] + '/' + f['date_uploaded'] + '.png'),
+            'username': f['username'],
+            'title': database.get_picture(f['author'], f['date_uploaded'])['title'],
+            'author': f['author'],
+            'date_uploaded': f['date_uploaded'],
+            'date_uploaded_formatted': get_formatted_time(get_epoch_time(f['date_uploaded'])),
+            'date_added': f['date_added'],
+            'date_added_formatted': get_formatted_time(get_epoch_time(f['date_added']))
+        })
+
+    return output
+
+
+def get_comments(user, title):
+    if not user or not title:
+        return None
+
+    comments = database.get_comments(user, title)
+
+    if not comments:
+        return None
+
+    output = []
+    for c in comments:
+        output.append({
+            'username': c['username'],
+            'author': c['author'],
+            'date_uploaded': c['date_uploaded'],
+            'date_uploaded_formatted': get_formatted_time(get_epoch_time(c['date_uploaded'])),
+            'date_added': c['date_added'],
+            'date_added_formatted': get_formatted_time(get_epoch_time(c['date_added'])),
+            'message': c['message']
+        })
+
+    return output
+
+
+def get_friends(user=None):
+    if not user and logged_in():
+        user = session['username']
+
+    return database.get_friends(user)
 
 
 # App routing
@@ -223,27 +296,44 @@ def user(urluser=None):
     friends = None
     if logged_in():
         friends = database.get_friends(get_user()['username'])
-        if not friends:
-            friends = []
 
-    print(friends)
     return render_template('user.html', pagetitle=urluser, user=get_user(), page_user=page_user, pictures=get_pictures(urluser), friends=friends)
 
 
 @app.route('/user/<urluser>/gallery/')
 def gallery(urluser=None):
+    if not get_user(urluser):
+        return redirect(url_for('home'))
+
     return render_template('gallery.html', pagetitle=urluser, user=get_user(), pictures=get_pictures(urluser))
 
 
 @app.route('/user/<urluser>/favourites/')
 def favourites(urluser=None):
-    return render_template('gallery.html', pagetitle=urluser, user=get_user())
+    if not get_user(urluser):
+        return redirect(url_for('home'))
+
+    return render_template('gallery.html', pagetitle=urluser, user=get_user(), pictures=get_favourites(urluser))
+
+
+@app.route('/user/<urluser>/friends')
+def friends(urluser=None):
+    if not get_user(urluser):
+        return redirect(url_for('home'))
+
+    user = get_user()
+    if not logged_in() or user['username'] != urluser:
+        return redirect(url_for('user', urluser=urluser))
+
+    pictures = get_friends_pictures(user['username'])
+
+    return render_template('gallery.html', pagetitle='Friends', user=user, pictures=pictures)
 
 
 @app.route('/user/<urluser>/<urltitle>', methods=['GET', 'POST'])
 def picture(urluser=None, urltitle=None):
     picture = get_picture(urluser, urltitle)
-    print(picture)
+
     if not picture:
         return redirect(url_for('user', urluser=urluser))
 
@@ -259,7 +349,15 @@ def picture(urluser=None, urltitle=None):
         database.add_comment(username, author, date_uploaded, date_added, message)
         return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
-    return render_template('picture.html', pagetitle=urltitle, user=get_user(), picture=picture)
+    comments = get_comments(urluser, urltitle)
+    favourites = []
+    if logged_in():
+        fav = get_favourites(get_user()['username'])
+        if fav:
+            for f in fav:
+                favourites.append(f['author'] + f['date_uploaded'])
+
+    return render_template('picture.html', pagetitle=urltitle, user=get_user(), picture=picture, comments=comments, favourites=favourites)
 
 
 @app.route('/user/<urluser>/<urltitle>/edit', methods=['GET', 'POST'])
@@ -273,12 +371,13 @@ def edit(urluser=None, urltitle=None):
 
     message = None
     if request.method == 'POST':
-        if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password']):
+        if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password'].encode('utf-8')):
             message = 'Incorrect password'
         else:
-            database.edit_picture(picture['author'], picture['date'], request.form['title'], request.form['description'])
+            database.edit_picture(picture['author'], picture['date_uploaded'], request.form['title'], request.form['description'])
             message = 'Changes saved successfully'
             picture = get_picture(urluser, urltitle)
+            return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
     request.form.title = picture['title']
     request.form.description = picture['description']
@@ -355,18 +454,76 @@ def add_friend(urluser=None):
     if not logged_in():
         return redirect(url_for('login'))
 
-    if urluser and urluser in database.get_friends(get_user()):
-        database.add_friend(get_user()['username'], urluser, get_time(time.time()))
+    user = get_user()
+    friend = get_user(urluser)
+    if user and friend and user['username'] != friend['username']:
+        friends = database.get_friends(user['username'])
+        if not friends or friend['username'] not in friends:
+            database.add_friend(user['username'], friend['username'], get_time(time.time()))
 
     return redirect(url_for('user', urluser=urluser))
 
 
 @app.route('/removefriend/<urluser>')
 def remove_friend(urluser=None):
-    if logged_in() and urluser:
-        database.remove_friend(get_user()['username'], urluser)
+    if not logged_in():
+        return redirect(url_for('login'))
+
+    user = get_user()
+    friends = database.get_friends(user['username'])
+    if urluser and user and friends and get_user(urluser) and urluser in friends:
+        database.remove_friend(user['username'], urluser)
 
     return redirect(url_for('user', urluser=urluser))
+
+
+@app.route('/favourite/<urluser>/<urltitle>')
+def add_favourite(urluser=None, urltitle=None):
+    if not logged_in():
+        return redirect(url_for('login'))
+
+    user = get_user()
+    favourites = get_favourites(user['username'])
+    pictures = []
+    if favourites:
+        for f in favourites:
+            pictures.append(f['authors'] + f['date_uploaded'])
+
+    if urluser and urltitle and not pictures or pictures and not urluser + urltitle in pictures:
+        print('success')
+        database.add_favourite(user['username'], urluser, urltitle, get_time(time.time()))
+
+    return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
+
+
+@app.route('/unfavourite/<urluser>/<urltitle>')
+def remove_favourite(urluser=None, urltitle=None):
+    if not logged_in():
+        return redirect(url_for('login'))
+
+    user = get_user()
+    favourites = get_favourites(user['username'])
+    pictures = []
+    for f in favourites:
+        pictures.append(f['author'] + f['date_uploaded'])
+
+    if urluser and urltitle and pictures and urluser + urltitle in pictures:
+        database.remove_favourite(user['username'], urluser, urltitle)
+
+    return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
+
+
+@app.route('/removecomment/<urluser>/<urltitle>/<urlcommenter>/<urldate>')
+def remove_comment(urluser, urltitle, urlcommenter, urldate):
+    if urluser and urltitle and urlcommenter and urldate:
+        user = get_user()
+        author = get_user(urluser)
+        commenter = get_user(urlcommenter)
+        if user and author and commenter:
+            if user['username'] == author['username'] or user['username'] == commenter['username'] or user['rank'] > 0:
+                database.remove_comment(urlcommenter, urluser, urltitle, urldate)
+
+    return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
 
 @app.route('/remove/<urluser>/<urltitle>')
@@ -377,6 +534,9 @@ def remove_picture(urluser=None, urltitle=None):
 
     if user and other and picture:
         if user['username'] == other['username'] or user['rank'] >= 1:
+            print(user)
+            print(other)
+            print(picture)
             database.remove_picture(urluser, urltitle)
             os.remove(app.config['upload_folder'] + urluser + '/' + urltitle + '.png')
 
@@ -396,6 +556,7 @@ def remove_user(urluser=None):
     return redirect(url_for('home'))
 
 
+# Error handling
 @app.route('/error/<int:status>')
 def error(status=404):
     message = ''
@@ -408,7 +569,6 @@ def error(status=404):
     return render_template('error.html', pagetitle=status, message=message, user=get_user())
 
 
-# Error handling
 @app.errorhandler(404)
 def error404(error):
     return redirect(url_for('.error', status=404))

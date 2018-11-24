@@ -7,31 +7,53 @@
         <img src="{{ picture['file'] }}" width="100%">
     </div>
     <div class="row">
+        {% if user %}
         {% if user['username'] == picture['author'] %}
-        <a href="{{ url_for('edit', urluser=picture['author'], urltitle=picture['title']) }}"><button class="btn">Edit</button></a>
+        <a href="{{ url_for('edit', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn">Edit</button></a>
         {% endif %}
         {% if user['username'] == picture['author'] or user['rank'] > 0 %}
-        <a href="{{ url_for('remove_picture', urluser=picture['author'], urltitle=picture['title']) }}"><button class="btn btn-danger">Delete</button></a>
+        <a href="{{ url_for('remove_picture', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn btn-danger">Delete</button></a>
         {% endif %}
-        <label>{{ picture['title'] }}</label>
-        <label><a href="{{ url_for('user', urluser=picture['author']) }}">{{ picture['author'] }}</a></label>
-        <p>{{ picture['description'] }}</p>
+        {% endif %}
+        <div class="col">
+            <div class="row">
+                <label>{{ picture['title'] }}</label>
+            </div>
+            <div class="row">
+                <label>By: <a href="{{ url_for('user', urluser=picture['author']) }}">{{ picture['author'] }}</a></label>
+            </div>
+            <div class="row">
+                <p>Description: {{ picture['description'] }}</p>
+            </div>
+        </div>
     </div>
+    {% if not favourites or picture['author'] + picture['date_uploaded'] not in favourites %}
+    <a href="{{ url_for('add_favourite', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn">Favourite</button></a>
+    {% else %}
+    <a href="{{ url_for('remove_favourite', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn">Unfavourite</button></a>
+    {% endif %}
     <div class="row">
         <form method="POST">
-            <textarea class="form-control form-text text-center" cols="64" name="comment" placeholder="Write your own comment..." rows="2" required></textarea>
+            <textarea class="form-control form-text text-center" cols="64" name="message" placeholder="Write your own comment..." rows="2" required></textarea>
             <button class="btn btn-sm btn-success form-control" style="max-width: 100px;" type="submit">Post</button>
         </form>
     </div>
     <div class="row">
         <ul>
-            {% for comment in picture['comments'] %}
+            {% if comments %}
+            {% for comment in comments %}
             <li>
-                <strong><a href="{{ url_for('user', urluser=comment['username']) }}">{{ comment['username'] }}</a></strong> {{ comment['date'] }}
+                <strong><a href="{{ url_for('user', urluser=comment['username']) }}">{{ comment['username'] }}</a></strong> {{ comment['date_added_formatted'] }}
                 <br>
                 {{ comment['message'] }}
+                {% if user %}
+                {% if user['username'] == comment['username'] or user['username'] == picture['author'] or user['rank'] > 0 %}
+                <a href="{{ url_for('remove_comment', urluser=picture['author'], urltitle=picture['date_uploaded'], urlcommenter=comment['username'], urldate=comment['date_added']) }}"><button class="btn btn-danger">Remove comment</button></a>
+                {% endif %}
+                {% endif %}
             </li>
             {% endfor %}
+            {% endif %}
         </ul>
     </div>
 </div>
