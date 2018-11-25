@@ -1,0 +1,4 @@
+INFO | 2018-11-25 17:59:31,606 | main | login | test logged in
+INFO | 2018-11-25 18:00:22,099 | main | picture | test posted a comment on /admin/20181123191243
+INFO | 2018-11-25 18:00:47,308 | main | search | test searched for test
+INFO | 2018-11-25 18:00:53,425 | main | logout | test logged out
