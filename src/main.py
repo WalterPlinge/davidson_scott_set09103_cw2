@@ -195,6 +195,9 @@ def browse():
 @app.route('/search/', methods=['POST'])
 def search():
     query = request.form['search']
+    user = get_user()
+    if user:
+        app.logger.info(user['username'] + ' searched for ' + query)
     return redirect(url_for('searchterm', urlquery=query))
 
 
@@ -215,13 +218,15 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user = database.get_user(username)
+        user = get_user(username)
         if not user:
             error = 'User does not exist.'
         elif not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+            app.logger.info(username + ' used invalid password at login')
             error = 'Invalid password.'
         else:
             session['username'] = username
+            app.logger.info(username + ' logged in')
             return redirect(url_for('home'))
     return render_template('login.html', pagetitle='Log in', error=error)
 
@@ -247,6 +252,7 @@ def register():
             if not os.path.isdir(app.config['upload_folder'] + username + '/'):
                 os.mkdir(app.config['upload_folder'] + username + '/')
             session['username'] = username
+            app.logger.info(username + ' account created')
             return redirect(url_for('home'))
     return render_template('register.html', pagetitle='Register', error=error)
 
@@ -269,10 +275,12 @@ def reset():
         elif password1 != password2:
             message = 'Passwords do not match'
         elif not user['email'] != email:
+            app.logger.info(username + ' used invalid email at reset')
             message = 'Incorrect email'
         else:
             database.update_user(username, bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt()), email, user['description'])
             session['username'] = username
+            app.logger.info(username + ' password reset successful')
             return redirect(url_for('home'))
 
     return render_template('reset.html', pagetitle='Reset', message=message)
@@ -281,6 +289,7 @@ def reset():
 @app.route('/logout')
 def logout():
     if logged_in():
+        app.logger.info(session['username'] + ' logged out')
         session.pop('username', None)
 
     return redirect(url_for('home'))
@@ -340,13 +349,13 @@ def picture(urluser=None, urltitle=None):
     if request.method == 'POST':
         if not logged_in():
             return redirect(url_for('login'))
-
         username = get_user()['username']
         author = urluser
         date_uploaded = urltitle
         date_added = get_time(time.time())
         message = request.form['message']
         database.add_comment(username, author, date_uploaded, date_added, message)
+        app.logger.info(username + ' posted a comment on /' + urluser + '/' + urltitle)
         return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
     comments = get_comments(urluser, urltitle)
@@ -377,6 +386,7 @@ def edit(urluser=None, urltitle=None):
             database.edit_picture(picture['author'], picture['date_uploaded'], request.form['title'], request.form['description'])
             message = 'Changes saved successfully'
             picture = get_picture(urluser, urltitle)
+            app.logger.info(urluser + ' edited picture ' + urltitle)
             return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
 
     request.form.title = picture['title']
@@ -410,6 +420,7 @@ def upload():
                     date = get_time(time.time())
                     database.add_picture(username, date, request.form['title'], request.form['description'])
                     file.save(app.config['upload_folder'] + username + '/' + date + '.png')
+                    app.logger.info(username + ' uploaded image ' + date)
                     return redirect(url_for('picture', urluser=username, urltitle=date))
 
     return render_template('upload.html', pagetitle='Upload', user=user, message=message)
@@ -427,6 +438,7 @@ def settings():
         if not bcrypt.checkpw(request.form['password'].encode('utf-8'), user['password'].encode('utf-8')):
             message = "Incorrect password."
         else:
+            app.logger.info(username + ' changed their settings')
             database.update_user(username, user['password'], request.form['email'], request.form['description'])
             message = "Changes saved successfully."
             if 'image' not in request.files:
@@ -459,6 +471,7 @@ def add_friend(urluser=None):
     if user and friend and user['username'] != friend['username']:
         friends = database.get_friends(user['username'])
         if not friends or friend['username'] not in friends:
+            app.logger.info(user['username'] + ' added ' + friend['username'] + ' as a friend')
             database.add_friend(user['username'], friend['username'], get_time(time.time()))
 
     return redirect(url_for('user', urluser=urluser))
@@ -472,6 +485,7 @@ def remove_friend(urluser=None):
     user = get_user()
     friends = database.get_friends(user['username'])
     if urluser and user and friends and get_user(urluser) and urluser in friends:
+        app.logger.info(user['username'] + ' removed ' + friend['username'] + ' as a friend')
         database.remove_friend(user['username'], urluser)
 
     return redirect(url_for('user', urluser=urluser))
@@ -490,7 +504,7 @@ def add_favourite(urluser=None, urltitle=None):
             pictures.append(f['authors'] + f['date_uploaded'])
 
     if urluser and urltitle and not pictures or pictures and not urluser + urltitle in pictures:
-        print('success')
+        app.logger.info(user['username'] + ' added ' + urluser + urltitle + ' to their favourites')
         database.add_favourite(user['username'], urluser, urltitle, get_time(time.time()))
 
     return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
@@ -508,6 +522,7 @@ def remove_favourite(urluser=None, urltitle=None):
         pictures.append(f['author'] + f['date_uploaded'])
 
     if urluser and urltitle and pictures and urluser + urltitle in pictures:
+        app.logger.info(user['username'] + ' removed ' + urluser + urltitle + ' to their favourites')
         database.remove_favourite(user['username'], urluser, urltitle)
 
     return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
@@ -521,6 +536,7 @@ def remove_comment(urluser, urltitle, urlcommenter, urldate):
         commenter = get_user(urlcommenter)
         if user and author and commenter:
             if user['username'] == author['username'] or user['username'] == commenter['username'] or user['rank'] > 0:
+                app.logger.info(user['username'] + ' removed comment by ' + urlcommenter + ' from ' + urluser + urltitle)
                 database.remove_comment(urlcommenter, urluser, urltitle, urldate)
 
     return redirect(url_for('picture', urluser=urluser, urltitle=urltitle))
@@ -534,9 +550,7 @@ def remove_picture(urluser=None, urltitle=None):
 
     if user and other and picture:
         if user['username'] == other['username'] or user['rank'] >= 1:
-            print(user)
-            print(other)
-            print(picture)
+            app.logger.info(user['username'] + ' removed ' + urluser + urltitle)
             database.remove_picture(urluser, urltitle)
             os.remove(app.config['upload_folder'] + urluser + '/' + urltitle + '.png')
 
@@ -550,6 +564,7 @@ def remove_user(urluser=None):
 
     if user and other:
         if user['username'] == other['username'] or user['rank'] == 2:
+            app.logger.info(user['username'] + ' removed account ' + urluser)
             database.remove_user(urluser)
             shutil.rmtree(app.config['upload_folder'] + urluser + '/')
 
