@@ -27,10 +27,12 @@
             </div>
         </div>
     </div>
+    {% if user and user['username'] != picture['author'] %}
     {% if not favourites or picture['author'] + picture['date_uploaded'] not in favourites %}
     <a href="{{ url_for('add_favourite', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn">Favourite</button></a>
     {% else %}
     <a href="{{ url_for('remove_favourite', urluser=picture['author'], urltitle=picture['date_uploaded']) }}"><button class="btn">Unfavourite</button></a>
+    {% endif %}
     {% endif %}
     <div class="row">
         <form method="POST">
